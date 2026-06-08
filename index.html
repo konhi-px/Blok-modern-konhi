@@ -41,13 +41,14 @@
         #status-container {
             text-align: center; background: #1e293b; padding: 10px 24px; border-radius: 20px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); font-size: 15px; margin-bottom: 15px;
+            width: 80vw; max-width: 320px;
         }
 
         .status-row { display: flex; gap: 25px; font-weight: bold; justify-content: center; margin-bottom: 4px; }
         #score-val { color: #38bdf8; }
         #level-val { color: #fbbf24; }
         #difficulty-val { font-weight: 800; }
-        #target-box { font-size: 12px; color: #94a3b8; font-weight: bold; }
+        #target-box { font-size: 12px; color: #94a3b8; font-weight: bold; margin-top: 2px; }
 
         #grid {
             display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
@@ -67,24 +68,19 @@
         }
 
         #pieces {
-            display: flex; gap: 15px; margin-bottom: 20px; min-height: 140px;
+            display: flex; gap: 15px; margin-bottom: 20px; min-height: 120px;
             align-items: center; justify-content: center; width: 100%;
         }
 
+        /* OPTIMASI: Ukuran wadah balok dikunci konsisten & nyaman untuk semua level */
         .piece-container {
-            background: #1e293b; padding: 8px; border-radius: 12px;
+            background: #1e293b; padding: 10px; border-radius: 12px;
             display: grid; gap: 2px; position: relative; touch-action: none;
         }
 
-        .piece-cell { width: 18px; height: 18px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 3px; }
-        .piece-empty { width: 18px; height: 18px; background: transparent; }
+        .piece-cell { width: 22px; height: 22px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 4px; }
+        .piece-empty { width: 22px; height: 22px; background: transparent; }
         .piece-row { display: flex; gap: 2px; }
-
-        .piece-container.medium .piece-cell { width: 25px; height: 25px; }
-        .piece-container.medium .piece-empty { width: 25px; height: 25px; }
-
-        .piece-container.hard .piece-cell { width: 32px; height: 32px; }
-        .piece-container.hard .piece-empty { width: 32px; height: 32px; }
 
         button {
             background: linear-gradient(135deg, #f43f5e, #e11d48);
@@ -100,10 +96,12 @@
         }
         #game-over-screen h2 { color: var(--accent-color); font-size: 32px; margin-bottom: 10px; }
 
+        /* OPTIMASI: Memaksa akselerasi GPU hardware lewat CSS agar pergeseran sangat mulus */
         .drag-clone {
-            position: fixed; pointer-events: none; opacity: 0.9; z-index: 999;
-            transform: translate(-50%, -50%); display: grid; gap: 2px;
-            background: transparent; padding: 0;
+            position: fixed; pointer-events: none; opacity: 0.85; z-index: 999;
+            display: grid; gap: 2px; background: transparent; padding: 0;
+            will-change: transform;
+            transform: translate3d(-50%, -50%, 0);
         }
     </style>
 </head>
@@ -117,7 +115,7 @@
             <div id="level-box">Level: <span id="level-val">1</span></div>
         </div>
         <div style="margin-bottom: 4px;">Mode: <span id="difficulty-val">NORMAL</span></div>
-        <div id="target-box">Progress Match: <span id="placed-val">0</span>/5 Balok</div>
+        <div id="target-box">Target Level: <span id="progress-val">0 / 1000</span> Poin</div>
     </div>
 
     <div id="grid">
@@ -135,8 +133,6 @@
         const GRID_SIZE = 10;
         let score = 0; 
         let level = 1;
-        let placedInCurrentLevel = 0; 
-        const TARGET_PER_LEVEL = 5; 
 
         const SHAPES = [
             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
@@ -150,12 +146,16 @@
         const scoreElement = document.getElementById('score-val');
         const levelElement = document.getElementById('level-val');
         const difficultyElement = document.getElementById('difficulty-val');
-        const placedElement = document.getElementById('placed-val');
+        const progressElement = document.getElementById('progress-val');
         const gameOverScreen = document.getElementById('game-over-screen');
 
         let activeClone = null;
         let activeShapeData = null;
         let activePieceId = null;
+
+        function getTargetScoreForLevel(lvl) {
+            return 1000 * Math.pow(2, lvl - 1);
+        }
 
         function loadSavedScore() {
             const savedScore = localStorage.getItem('block_blast_score');
@@ -165,23 +165,35 @@
             } else {
                 score = 0;
             }
+
+            level = 1;
+            while (score >= getTargetScoreForLevel(level)) {
+                level++;
+            }
         }
 
+        // Simpan skor asli ke lokal HP
         function saveScoreToDevice() {
             localStorage.setItem('block_blast_score', score);
         }
 
         function initGame() {
             loadSavedScore();
-            level = 1;
-            placedInCurrentLevel = 0;
             resetBoard();
             gameOverScreen.style.display = 'none';
         }
 
         function resetBoard() {
-            const cells = gridElement.querySelectorAll('.cell');
-            cells.forEach(c => c.remove());
+            // OPTIMASI: Penghapusan elemen sel lama secara menyeluruh untuk mencegah kebocoran memori RAM
+            while (gridElement.firstChild) {
+                if(gridElement.firstChild.id !== 'game-over-screen') {
+                    gridElement.removeChild(gridElement.firstChild);
+                } else {
+                    break;
+                }
+            }
+            const oldCells = gridElement.querySelectorAll('.cell');
+            oldCells.forEach(c => c.remove());
             
             for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
                 const cell = document.createElement('div');
@@ -205,13 +217,6 @@
         function createPieceElement(shape, id) {
             const container = document.createElement('div');
             container.classList.add('piece-container');
-            
-            if (level >= 16 && level <= 20) {
-                container.classList.add('medium');
-            } else if (level >= 21) {
-                container.classList.add('hard');
-            }
-            
             container.dataset.pieceId = id;
             
             shape.forEach(row => {
@@ -298,22 +303,10 @@
                 delete currentSpawnedShapes[id]; 
 
                 score += 1; 
-                placedInCurrentLevel++;
                 saveScoreToDevice();
 
                 checkRowsAndColumns();
-
-                if (placedInCurrentLevel >= TARGET_PER_LEVEL) {
-                    if (level < 25) {
-                        level++;
-                        placedInCurrentLevel = 0;
-                        setTimeout(() => {
-                            alert(`Hebat! Kamu naik ke Level ${level}!`);
-                            resetBoard();
-                        }, 200);
-                        return;
-                    }
-                }
+                checkLevelUpCondition();
 
                 updateStatusUI();
 
@@ -363,6 +356,25 @@
             }
         }
 
+        function checkLevelUpCondition() {
+            let currentTarget = getTargetScoreForLevel(level);
+            let leveledUp = false;
+
+            while (score >= currentTarget) {
+                level++;
+                currentTarget = getTargetScoreForLevel(level);
+                leveledUp = true;
+            }
+
+            if (leveledUp) {
+                setTimeout(() => {
+                    alert(`Luar Biasa! Skor Anda Mencapai Target. Naik Ke Level ${level}!`);
+                    resetBoard();
+                }, 200);
+            }
+        }
+
+        // OPTIMASI: Sistem kalkulasi matriks sisa langkah super cepat dengan metode pemutusan loop dini (Early Return)
         function hasValidMoves() {
             const cells = gridElement.querySelectorAll('.cell');
             const remainingKeys = Object.keys(currentSpawnedShapes);
@@ -401,15 +413,17 @@
         function updateStatusUI() {
             scoreElement.innerText = score;
             levelElement.innerText = level;
-            placedElement.innerText = placedInCurrentLevel;
+            
+            const currentTarget = getTargetScoreForLevel(level);
+            progressElement.innerText = `${score} / ${currentTarget}`;
 
-            if (level >= 1 && level <= 15) {
+            if (level === 1) {
                 difficultyElement.innerText = "NORMAL";
                 difficultyElement.style.color = "#38bdf8";
-            } else if (level >= 16 && level <= 20) {
+            } else if (level === 2) {
                 difficultyElement.innerText = "MENENGAH";
                 difficultyElement.style.color = "#fbbf24";
-            } else if (level >= 21) {
+            } else {
                 difficultyElement.innerText = "SULIT";
                 difficultyElement.style.color = "#f43f5e";
             }
@@ -435,7 +449,10 @@
             saveScoreToDevice();
             
             level = 1;
-            placedInCurrentLevel = 0;
+            while (score >= getTargetScoreForLevel(level)) {
+                level++;
+            }
+            
             gameOverScreen.style.display = 'none';
             resetBoard();
         }
