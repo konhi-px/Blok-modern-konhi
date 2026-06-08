@@ -2,68 +2,57 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Blast Final v3.5</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Block Blast Modern Edition</title>
     <style>
-        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
-        #version-tag { position: fixed; top: 5px; right: 5px; font-size: 10px; color: #475569; }
-        .game-wrapper { width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
+        :root { --bg-color: #0f172a; --grid-bg: #1e293b; --cell-bg: #334155; --cell-filled: #38bdf8; --accent-color: #f43f5e; }
+        body { margin: 0; background: var(--bg-color); font-family: 'Segoe UI', sans-serif; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; touch-action: none; }
         
-        /* Grid & Pieces */
-        #grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; background: #334155; padding: 5px; border-radius: 8px; width: 320px; height: 320px; }
-        .cell { background: #0f172a; border-radius: 2px; }
-        .cell.filled { background: #38bdf8; }
-        #pieces { display: flex; gap: 10px; margin-top: 20px; }
-        .piece { background: #1e293b; padding: 10px; border-radius: 8px; cursor: grab; }
+        #version-tag { position: absolute; top: 10px; right: 10px; font-size: 10px; color: rgba(255, 255, 255, 0.3); }
+        h1 { margin: 20px 0 10px; font-size: 26px; background: linear-gradient(to right, #38bdf8, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        /* Audio Controls */
-        .audio-controls { background: #1e293b; padding: 10px; border-radius: 12px; margin-bottom: 15px; font-size: 12px; text-align: center; width: 300px; }
+        /* Audio Control Panel */
+        .audio-panel { background: #1e293b; padding: 15px; border-radius: 20px; width: 85vw; max-width: 320px; text-align: center; margin-bottom: 20px; border: 1px solid #475569; }
+        .btn-play { background: #22c55e; color: white; border: none; padding: 8px 16px; border-radius: 99px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        
+        /* Game Grid */
+        #grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: var(--grid-bg); padding: 12px; border-radius: 16px; width: 85vw; max-width: 360px; aspect-ratio: 1 / 1; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .cell { background: var(--cell-bg); border-radius: 4px; aspect-ratio: 1 / 1; }
+        .cell.filled { background: var(--cell-filled); box-shadow: inset 0 0 10px rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
-    <div id="version-tag">v3.5</div>
-    <div class="game-wrapper">
-        <h1>Block Blast</h1>
-        
-        <div class="audio-controls">
-            <input type="file" id="music-upload" accept="audio/*">
-            <button onclick="playMusic()">Play 🎵</button>
-            <div id="status">Musik standby</div>
-        </div>
+    <div id="version-tag">v3.6</div>
+    <h1>Block Blast: Modern</h1>
 
-        <div id="grid"></div>
-        <div id="pieces">
-            <div class="piece" draggable="true" ondragstart="drag(event)">Balok A</div>
-            <div class="piece" draggable="true" ondragstart="drag(event)">Balok B</div>
-        </div>
-        <button onclick="location.reload()" style="margin-top:20px;">Reset Game</button>
+    <div class="audio-panel">
+        <input type="file" id="music-upload" accept="audio/*">
+        <button class="btn-play" onclick="playAudio()">Play Musik 🎵</button>
+        <p id="status" style="font-size: 11px; margin-top: 8px; color: #94a3b8;">Pilih file & klik Play</p>
     </div>
 
+    <div id="grid"></div>
+
     <script>
-        // 1. Audio Logic
         const audio = new Audio();
         document.getElementById('music-upload').onchange = (e) => {
             audio.src = URL.createObjectURL(e.target.files[0]);
             document.getElementById('status').innerText = "File: " + e.target.files[0].name;
         };
-        function playMusic() {
-            audio.play().catch(() => alert("Klik layar sekali setelah pilih lagu!"));
+
+        function playAudio() {
+            if(!audio.src) { alert("Pilih file dulu!"); return; }
+            audio.play().catch(() => alert("Klik di area grid untuk mulai audio!"));
         }
 
-        // 2. Grid Logic
+        // Generate Grid Cantik
         const grid = document.getElementById('grid');
         for(let i=0; i<100; i++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
-            // Drop logic
-            cell.ondragover = (e) => e.preventDefault();
-            cell.ondrop = (e) => {
-                cell.classList.add('filled');
-            };
+            cell.onclick = () => cell.classList.toggle('filled');
             grid.appendChild(cell);
         }
-
-        function drag(e) { e.dataTransfer.setData("text", e.target.id); }
     </script>
 </body>
 </html>
