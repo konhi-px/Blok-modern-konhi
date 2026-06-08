@@ -143,7 +143,6 @@
             [[1,1],[1,1]], [[1,1],[1,0]], [[1,1],[0,1]], [[1,0],[1,1]]
         ];
 
-        // Menyimpan bentuk balok yang aktif di render untuk validasi game over
         let currentSpawnedShapes = {};
 
         const gridElement = document.getElementById('grid');
@@ -162,6 +161,7 @@
             const savedScore = localStorage.getItem('block_blast_score');
             if (savedScore !== null) {
                 score = parseInt(savedScore, 10);
+                if (isNaN(score) || score < 0) score = 0;
             } else {
                 score = 0;
             }
@@ -295,7 +295,7 @@
                 const origPiece = piecesElement.querySelector(`[data-piece-id="${id}"]`);
                 if (origPiece) origPiece.remove();
 
-                delete currentSpawnedShapes[id]; // Hapus bentuk dari daftar aktif setelah ditaruh
+                delete currentSpawnedShapes[id]; 
 
                 score += 1; 
                 placedInCurrentLevel++;
@@ -321,7 +321,6 @@
                     generatePieces();
                 }
 
-                // Cek Game Over secara real-time pasca penempatan balok sukses
                 if (!hasValidMoves()) {
                     triggerGameOver();
                 }
@@ -364,7 +363,6 @@
             }
         }
 
-        // FIX: Sistem kalkulasi validasi matriks sisa langkah yang diperbaiki total
         function hasValidMoves() {
             const cells = gridElement.querySelectorAll('.cell');
             const remainingKeys = Object.keys(currentSpawnedShapes);
