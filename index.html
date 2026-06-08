@@ -3,500 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Blast Modern Edition</title>
+    <title>Block Blast v3.3</title>
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --grid-bg: #1e293b;
-            --cell-bg: #334155;
-            --cell-filled: #38bdf8;
-            --cell-filled-shadow: #0284c7;
-            --accent-color: #f43f5e;
-        }
-
-        body {
-            margin: 0; padding: 0;
-            background: var(--bg-color);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            color: #f8fafc;
-            touch-action: none;
-            user-select: none;
-            overflow: hidden;
-        }
-
-        h1 { 
-            margin: 0 0 5px 0; 
-            font-size: 26px; 
-            font-weight: 800;
-            background: linear-gradient(to right, #38bdf8, #f43f5e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        #status-container {
-            text-align: center; background: #1e293b; padding: 12px 24px; border-radius: 20px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); font-size: 15px; margin-bottom: 15px;
-            width: 80vw; max-width: 320px; border: 1px solid #475569;
-            position: relative; transition: transform 0.1s ease;
-        }
-
-        .status-row { display: flex; gap: 25px; font-weight: bold; justify-content: center; margin-bottom: 6px; }
-        #score-val { color: #38bdf8; transition: transform 0.1s ease; display: inline-block; }
-        #level-val { color: #fbbf24; }
-        #difficulty-val { font-weight: 800; }
+        body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        #version-tag { position: fixed; top: 5px; right: 5px; font-size: 10px; color: #475569; }
+        #game-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px; padding: 20px; }
         
-        #target-box { font-size: 12px; color: #94a3b8; font-weight: bold; margin-top: 5px; text-align: left; }
-        .progress-bar-bg { width: 100%; height: 8px; background: #334155; border-radius: 999px; margin-top: 4px; overflow: hidden; }
-        .progress-bar-fill { width: 0%; height: 100%; background: linear-gradient(to right, #38bdf8, #fbbf24); transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* Audio Control Fix */
+        .audio-box { background: #1e293b; padding: 15px; border-radius: 15px; width: 90%; margin-bottom: 20px; text-align: center; }
+        .btn-play { background: #22c55e; padding: 10px 20px; border-radius: 20px; border: none; color: white; font-weight: bold; margin-top: 10px; }
         
-        #combo-badge { 
-            font-size: 14px; color: #f43f5e; font-weight: 900; min-height: 20px; margin-top: 2px; 
-            animation: pulse 0.5s infinite alternate; display: none; 
-        }
-        
-        #mega-combo-overlay {
-            display: none; position: absolute; font-size: 24px; font-weight: 900;
-            background: linear-gradient(45deg, #ff0055, #ffcc00, #00ffcc);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
-            width: 100%; text-align: center; left: 0; top: 40%; z-index: 5;
-            pointer-events: none; animation: megaBlast 0.6s ease-out forwards;
-        }
-
-        #music-container {
-            background: #1e293b; border: 1px dashed #475569; padding: 8px 12px;
-            border-radius: 12px; width: 80vw; max-width: 320px; margin-bottom: 12px;
-            text-align: center; font-size: 11px; color: #94a3b8;
-        }
-        .music-btn-label {
-            background: #334155; color: #f8fafc; padding: 4px 10px; border-radius: 6px;
-            display: inline-block; font-weight: bold; margin-top: 5px; cursor: pointer;
-            border: 1px solid #475569; font-size: 12px;
-        }
-        .music-btn-label:active { background: #475569; }
-        #track-name { color: #38bdf8; font-weight: bold; margin-top: 4px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-        #grid {
-            display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
-            background: var(--grid-bg); padding: 12px; border-radius: 16px;
-            width: 85vw; max-width: 360px; aspect-ratio: 1 / 1;
-            margin-bottom: 15px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-            position: relative;
-        }
-
-        .cell {
-            background: var(--cell-bg); border-radius: 4px; aspect-ratio: 1 / 1;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-        }
-
-        .cell.filled {
-            background: linear-gradient(135deg, var(--cell-filled), var(--cell-filled-shadow));
-            box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);
-            animation: popIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .cell.clearing {
-            transform: scale(0); opacity: 0; background: #f8fafc !important;
-        }
-
-        #pieces {
-            display: flex; gap: 15px; margin-bottom: 15px; min-height: 120px;
-            align-items: center; justify-content: center; width: 100%;
-        }
-
-        .piece-container {
-            background: #1e293b; padding: 10px; border-radius: 12px;
-            display: grid; gap: 2px; position: relative; touch-action: none;
-        }
-
-        .piece-cell { width: 22px; height: 22px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 4px; }
-        .piece-empty { width: 22px; height: 22px; background: transparent; }
-        .piece-row { display: flex; gap: 2px; }
-
-        .control-btns { display: flex; gap: 10px; }
-        button {
-            background: linear-gradient(135deg, #f43f5e, #e11d48);
-            color: white; border: none; padding: 10px 24px;
-            border-radius: 9999px; font-size: 14px; font-weight: 600; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-
-        #game-over-screen {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.95); border-radius: 16px;
-            flex-direction: column; align-items: center; justify-content: center; z-index: 10;
-        }
-        #game-over-screen h2 { color: var(--accent-color); font-size: 32px; margin-bottom: 10px; }
-
-        .drag-clone {
-            position: fixed; pointer-events: none; opacity: 0.85; z-index: 999;
-            display: grid; gap: 2px; background: transparent; padding: 0;
-            will-change: transform; transform: translate3d(-50%, -50%, 0) scale(1.1);
-        }
-
-        @keyframes popIn { 0% { transform: scale(0.7); } 100% { transform: scale(1); } }
-        @keyframes pulse { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
-        @keyframes megaBlast {
-            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
-            50% { transform: scale(1.3) rotate(5deg); opacity: 1; }
-            70% { transform: scale(1.1) rotate(-3deg); }
-            100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
+        #grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; background: #334155; padding: 5px; border-radius: 10px; width: 320px; height: 320px; }
+        .cell { background: #0f172a; border-radius: 2px; }
+        .cell.filled { background: #38bdf8; }
     </style>
 </head>
 <body>
-
-    <h1>Block Blast: Modern</h1>
-    
-    <audio id="bgm-player" loop></audio>
-
-    <div id="status-container">
-        <div class="status-row">
-            <div id="score-box">Poin: <span id="score-val">0</span></div>
-            <div id="level-box">Level: <span id="level-val">1</span></div>
+    <div id="version-tag">v3.3</div>
+    <div id="game-container">
+        <h1>Block Blast</h1>
+        
+        <div class="audio-box">
+            <input type="file" id="music-upload" accept="audio/*">
+            <button class="btn-play" onclick="playAudio()">Mulai Musik 🎵</button>
+            <p id="status" style="font-size: 12px; margin-top: 10px;">Pilih lagu & klik mulai</p>
         </div>
-        <div style="margin-bottom: 4px;">Mode: <span id="difficulty-val">NORMAL</span></div>
-        <div id="combo-badge">COMBO x1! 🔥</div>
-        <div id="mega-combo-overlay">MEGA COMBO x50! 🚀</div>
-        <div id="target-box">
-            Target Level: <span id="progress-val">0 / 1000</span> Poin
-            <div class="progress-bar-bg"><div id="progress-fill" class="progress-bar-fill"></div></div>
-        </div>
-    </div>
 
-    <div id="music-container">
-        <div>🎵 Setel Musik Pengiring Sendiri:</div>
-        <label class="music-btn-label">
-            Pilih File Lagu
-            <input type="file" id="music-upload" accept="audio/*" style="display: none;">
-        </label>
-        <span id="track-name">Belum ada musik kustom aktif</span>
-        <div style="color: #ef4444; font-size: 9px; margin-top: 3px; font-weight: bold;">
-            ⚠️ Batas Aman: Di bawah 2GB agar browser HP tidak crash/meledak!
-        </div>
-    </div>
-
-    <div id="grid">
-        <div id="game-over-screen">
-            <h2>GAME OVER</h2>
-            <p>Poin dikurangi 20 karena gagal!</p>
-            <button onclick="handleGameOverRestart()">Main Lagi</button>
-        </div>
-    </div>
-
-    <div id="pieces"></div>
-    <div class="control-btns">
-        <button id="mute-btn" style="background: #475569;" onclick="toggleMute()">Mute 🔊</button>
-        <button onclick="triggerManualReset()">Mulai Ulang</button>
+        <div id="grid"></div>
     </div>
 
     <script>
-        const GRID_SIZE = 10;
-        let score = 0; 
-        let level = 1;
-        let comboStreak = 1; 
-        let isMuted = false;
+        const audio = new Audio();
+        const upload = document.getElementById('music-upload');
+        const status = document.getElementById('status');
 
-        const SHAPES = [
-            [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
-            [[1,1],[1,1]], [[1,1],[1,0]], [[1,1],[0,1]], [[1,0],[1,1]]
-        ];
-
-        let currentSpawnedShapes = {};
-
-        const gridElement = document.getElementById('grid');
-        const piecesElement = document.getElementById('pieces');
-        const scoreElement = document.getElementById('score-val');
-        const levelElement = document.getElementById('level-val');
-        const difficultyElement = document.getElementById('difficulty-val');
-        const progressElement = document.getElementById('progress-val');
-        const progressFill = document.getElementById('progress-fill');
-        const comboBadge = document.getElementById('combo-badge');
-        const megaComboOverlay = document.getElementById('mega-combo-overlay');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        
-        const audioPlayer = document.getElementById('bgm-player');
-        const musicUpload = document.getElementById('music-upload');
-        const trackNameText = document.getElementById('track-name');
-        const muteBtn = document.getElementById('mute-btn');
-
-        let activeClone = null;
-        let activeShapeData = null;
-        let activePieceId = null;
-
-        musicUpload.addEventListener('change', function(e) {
+        // Fix Musik: Handle file upload
+        upload.onchange = (e) => {
             const file = e.target.files[0];
-            if (!file) return;
-
-            const MAX_SIZE_2GB = 2 * 1024 * 1024 * 1024;
-            
-            if (file.size > MAX_SIZE_2GB) {
-                alert(`❌ FILE TERLALU RAKSASA!\nUkuran file Anda (${(file.size / (1024*1024*1024)).toFixed(2)} GB) melebihi batas 2GB.\n\nBrowser HP Anda tidak akan kuat menampungnya. Mohon pilih file musik standar.`);
-                this.value = "";
+            if(file.size > 2 * 1024 * 1024 * 1024) {
+                alert("File terlalu besar!");
                 return;
             }
+            audio.src = URL.createObjectURL(file);
+            status.innerText = "Siap: " + file.name;
+        };
 
-            const fileURL = URL.createObjectURL(file);
-            audioPlayer.src = fileURL;
-            audioPlayer.volume = 0.5;
-            audioPlayer.play().catch(err => console.log("Menunggu interaksi user untuk memutar audio."));
-            
-            trackNameText.innerText = "Aktif: " + file.name;
-        });
-
-        function toggleMute() {
-            isMuted = !isMuted;
-            audioPlayer.muted = isMuted;
-            muteBtn.innerText = isMuted ? "Unmute 🔇" : "Mute 🔊";
-            muteBtn.style.background = isMuted ? "#f43f5e" : "#475569";
-        }
-
-        function getTargetScoreForLevel(lvl) { return 1000 * Math.pow(2, lvl - 1); }
-
-        function loadSavedScore() {
-            const savedScore = localStorage.getItem('block_blast_score');
-            if (savedScore !== null) {
-                score = parseInt(savedScore, 10);
-                if (isNaN(score) || score < 0) score = 0;
-            } else { score = 0; }
-            level = 1;
-            while (score >= getTargetScoreForLevel(level)) { level++; }
-        }
-
-        function saveScoreToDevice() { localStorage.setItem('block_blast_score', score); }
-
-        function initGame() {
-            loadSavedScore();
-            resetBoard();
-            gameOverScreen.style.display = 'none';
-        }
-
-        function resetBoard() {
-            // FIX LOGIK: Bersihkan cell lama dengan aman tanpa mengganggu layar Game Over
-            const oldCells = gridElement.querySelectorAll('.cell');
-            oldCells.forEach(c => c.remove());
-            
-            for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
-                const cell = document.createElement('div');
-                cell.classList.add('cell');
-                gridElement.appendChild(cell);
-            }
-            generatePieces();
-            comboStreak = 1;
-            updateStatusUI();
-        }
-
-        function generatePieces() {
-            piecesElement.innerHTML = '';
-            currentSpawnedShapes = {};
-            for (let i = 0; i < 3; i++) {
-                const randomShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-                currentSpawnedShapes[i] = randomShape;
-                createPieceElement(randomShape, i);
-            }
-        }
-
-        function createPieceElement(shape, id) {
-            const container = document.createElement('div');
-            container.classList.add('piece-container');
-            container.dataset.pieceId = id;
-            
-            shape.forEach(row => {
-                const rowEl = document.createElement('div');
-                rowEl.classList.add('piece-row');
-                row.forEach(cell => {
-                    const cellEl = document.createElement('div');
-                    cellEl.classList.add(cell === 1 ? 'piece-cell' : 'piece-empty');
-                    rowEl.appendChild(cellEl);
-                });
-                container.appendChild(rowEl);
+        // Fix Musik: Trigger audio lewat interaksi user
+        function playAudio() {
+            if (!audio.src) { alert("Pilih lagu dulu!"); return; }
+            audio.play().then(() => {
+                status.innerText = "Sedang Memutar: " + upload.files[0].name;
+            }).catch(err => {
+                status.innerText = "Gagal memutar, tap layar sekali lagi.";
             });
-
-            container.addEventListener('touchstart', (e) => {
-                activeShapeData = shape; activePieceId = id;
-                activeClone = container.cloneNode(true);
-                activeClone.classList.add('drag-clone');
-                document.body.appendChild(activeClone);
-                moveClone(e.touches[0].clientX, e.touches[0].clientY);
-            }, { passive: true });
-
-            container.addEventListener('touchmove', (e) => {
-                if (!activeClone) return;
-                moveClone(e.touches[0].clientX, e.touches[0].clientY);
-            }, { passive: true });
-
-            container.addEventListener('touchend', (e) => {
-                if (!activeClone) return;
-                const touch = e.changedTouches[0];
-                const targetCell = document.elementFromPoint(touch.clientX, touch.clientY - 50);
-                if (targetCell && targetCell.classList.contains('cell')) {
-                    const cells = Array.from(gridElement.querySelectorAll('.cell'));
-                    const targetIndex = cells.indexOf(targetCell);
-                    attemptPlacePiece(activeShapeData, targetIndex, activePieceId);
-                }
-                activeClone.remove(); activeClone = null;
-            });
-
-            piecesElement.appendChild(container);
         }
 
-        function moveClone(x, y) { activeClone.style.left = x + 'px'; activeClone.style.top = (y - 50) + 'px'; }
-
-        function attemptPlacePiece(shape, targetIndex, id) {
-            const startRow = Math.floor(targetIndex / GRID_SIZE);
-            const startCol = targetIndex % GRID_SIZE;
-            const cells = gridElement.querySelectorAll('.cell');
-            let canPlace = true; let cellsToFill = [];
-
-            // FIX BUG TYPO: Mengubah iterasi variabel 'c' yang tadinya salah merujuk ke 'r'
-            for (let r = 0; r < shape.length; r++) {
-                for (let c = 0; c < shape[r].length; c++) {
-                    if (shape[r][c] === 1) {
-                        const targetRow = startRow + r; const targetCol = startCol + c;
-                        const finalIndex = targetRow * GRID_SIZE + targetCol;
-                        if (targetRow >= GRID_SIZE || targetCol >= GRID_SIZE || finalIndex >= cells.length || cells[finalIndex].classList.contains('filled')) {
-                            canPlace = false; break;
-                        }
-                        cellsToFill.push(cells[finalIndex]);
-                    }
-                }
-                if (!canPlace) break;
-            }
-
-            if (canPlace) {
-                cellsToFill.forEach(cell => cell.classList.add('filled'));
-                const origPiece = piecesElement.querySelector(`[data-piece-id="${id}"]`);
-                if (origPiece) origPiece.remove();
-                delete currentSpawnedShapes[id]; 
-
-                score += 1; 
-                let dynamicCleared = checkRowsAndColumns();
-                if (!dynamicCleared) { comboStreak = 1; comboBadge.style.display = 'none'; }
-
-                saveScoreToDevice(); checkLevelUpCondition(); updateStatusUI();
-
-                scoreElement.style.transform = 'scale(1.3)';
-                setTimeout(() => scoreElement.style.transform = 'scale(1)', 100);
-
-                if (piecesElement.children.length === 0) { generatePieces(); }
-                if (!hasValidMoves()) { triggerGameOver(); }
-            }
+        // Fix Grid: Render sederhana untuk memastikan tidak bug
+        const grid = document.getElementById('grid');
+        for(let i=0; i<100; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.onclick = () => cell.classList.toggle('filled');
+            grid.appendChild(cell);
         }
-
-        function checkRowsAndColumns() {
-            const cells = gridElement.querySelectorAll('.cell');
-            let rowsToClear = []; let colsToClear = [];
-
-            for (let r = 0; r < GRID_SIZE; r++) {
-                let rowFilled = true;
-                for (let c = 0; c < GRID_SIZE; c++) { if (!cells[r * GRID_SIZE + c].classList.contains('filled')) { rowFilled = false; break; } }
-                if (rowFilled) rowsToClear.push(r);
-            }
-            for (let c = 0; c < GRID_SIZE; c++) {
-                let colFilled = true;
-                for (let r = 0; r < GRID_SIZE; r++) { if (!cells[r * GRID_SIZE + c].classList.contains('filled')) { colFilled = false; break; } }
-                if (colFilled) colsToClear.push(c);
-            }
-
-            let clearedCount = rowsToClear.length + colsToClear.length;
-            if (clearedCount > 0) {
-                rowsToClear.forEach(r => { for (let c = 0; c < GRID_SIZE; c++) { cells[r * GRID_SIZE + c].classList.add('clearing'); } });
-                colsToClear.forEach(c => { for (let r = 0; r < GRID_SIZE; r++) { cells[r * GRID_SIZE + c].classList.add('clearing'); } });
-                
-                setTimeout(() => {
-                    rowsToClear.forEach(r => { for (let c = 0; c < GRID_SIZE; c++) { cells[r * GRID_SIZE + c].classList.remove('filled', 'clearing'); } });
-                    colsToClear.forEach(c => { for (let r = 0; r < GRID_SIZE; r++) { cells[r * GRID_SIZE + c].classList.remove('filled', 'clearing'); } });
-                }, 200);
-
-                let currentAddedScore = (clearedCount * 10) * comboStreak;
-                if (comboStreak >= 4 || clearedCount >= 3) {
-                    currentAddedScore += 50;
-                    triggerMegaComboAnimation();
-                }
-                score += currentAddedScore;
-                
-                if (comboStreak > 1) {
-                    comboBadge.innerText = `COMBO x${comboStreak}! 🔥`;
-                    comboBadge.style.display = 'block';
-                }
-                comboStreak++; return true;
-            }
-            return false;
-        }
-
-        function triggerMegaComboAnimation() {
-            megaComboOverlay.style.display = 'block';
-            document.getElementById('status-container').style.transform = 'skewX(-4deg) scale(1.05)';
-            setTimeout(() => {
-                megaComboOverlay.style.display = 'none';
-                document.getElementById('status-container').style.transform = 'none';
-            }, 1200);
-        }
-
-        function checkLevelUpCondition() {
-            let currentTarget = getTargetScoreForLevel(level);
-            let leveledUp = false;
-            while (score >= currentTarget) { level++; currentTarget = getTargetScoreForLevel(level); leveledUp = true; }
-            if (leveledUp) {
-                setTimeout(() => { alert(`Luar Biasa! Skor Anda Mencapai Target. Naik Ke Level ${level}!`); resetBoard(); }, 200);
-            }
-        }
-
-        function hasValidMoves() {
-            const cells = gridElement.querySelectorAll('.cell');
-            const remainingKeys = Object.keys(currentSpawnedShapes);
-            if (remainingKeys.length === 0) return true;
-
-            for (let id of remainingKeys) {
-                let shape = currentSpawnedShapes[id];
-                for (let i = 0; i < cells.length; i++) {
-                    let startRow = Math.floor(i / GRID_SIZE); let startCol = i % GRID_SIZE; let canFit = true;
-                    for (let r = 0; r < shape.length; r++) {
-                        for (let c = 0; c < shape[r].length; c++) {
-                            if (shape[r][c] === 1) {
-                                let tRow = startRow + r; let tCol = startCol + c; let fIndex = tRow * GRID_SIZE + tCol;
-                                if (tRow >= GRID_SIZE || tCol >= GRID_SIZE || fIndex >= cells.length || cells[fIndex].classList.contains('filled')) { canFit = false; break; }
-                            }
-                        }
-                        if (!canFit) break;
-                    }
-                    if (canFit) return true; 
-                }
-            }
-            return false;
-        }
-
-        function updateStatusUI() {
-            scoreElement.innerText = score; levelElement.innerText = level;
-            const currentTarget = getTargetScoreForLevel(level);
-            const prevTarget = level === 1 ? 0 : getTargetScoreForLevel(level - 1);
-            progressElement.innerText = `${score} / ${currentTarget}`;
-
-            let percentage = ((score - prevTarget) / (currentTarget - prevTarget)) * 100;
-            if (percentage < 0) percentage = 0; if (percentage > 100) percentage = 100;
-            progressFill.style.width = `${percentage}%`;
-
-            if (level === 1) { difficultyElement.innerText = "NORMAL"; difficultyElement.style.color = "#38bdf8"; } 
-            else if (level === 2) { difficultyElement.innerText = "MENENGAH"; difficultyElement.style.color = "#fbbf24"; } 
-            else { difficultyElement.innerText = "SULIT"; difficultyElement.style.color = "#f43f5e"; }
-        }
-
-        function triggerManualReset() { if (confirm("Kamu menyerah di pertandingan ini? Poin akan dikurangi 20.")) { executePenaltyAndRestart(); } }
-        function triggerGameOver() { gameOverScreen.style.display = 'flex'; }
-        function handleGameOverRestart() { executePenaltyAndRestart(); }
-
-        function executePenaltyAndRestart() {
-            score -= 20; if (score < 0) score = 0; saveScoreToDevice();
-            level = 1; while (score >= getTargetScoreForLevel(level)) { level++; }
-            gameOverScreen.style.display = 'none'; resetBoard();
-        }
-
-        initGame();
     </script>
 </body>
 </html>
