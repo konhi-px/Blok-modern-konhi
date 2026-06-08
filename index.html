@@ -2,70 +2,68 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Blast v3.3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Blast Final v3.5</title>
     <style>
         body { margin: 0; background: #0f172a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
         #version-tag { position: fixed; top: 5px; right: 5px; font-size: 10px; color: #475569; }
-        #game-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px; padding: 20px; }
+        .game-wrapper { width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
         
-        /* Audio Control Fix */
-        .audio-box { background: #1e293b; padding: 15px; border-radius: 15px; width: 90%; margin-bottom: 20px; text-align: center; }
-        .btn-play { background: #22c55e; padding: 10px 20px; border-radius: 20px; border: none; color: white; font-weight: bold; margin-top: 10px; }
-        
-        #grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; background: #334155; padding: 5px; border-radius: 10px; width: 320px; height: 320px; }
+        /* Grid & Pieces */
+        #grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; background: #334155; padding: 5px; border-radius: 8px; width: 320px; height: 320px; }
         .cell { background: #0f172a; border-radius: 2px; }
         .cell.filled { background: #38bdf8; }
+        #pieces { display: flex; gap: 10px; margin-top: 20px; }
+        .piece { background: #1e293b; padding: 10px; border-radius: 8px; cursor: grab; }
+        
+        /* Audio Controls */
+        .audio-controls { background: #1e293b; padding: 10px; border-radius: 12px; margin-bottom: 15px; font-size: 12px; text-align: center; width: 300px; }
     </style>
 </head>
 <body>
-    <div id="version-tag">v3.3</div>
-    <div id="game-container">
+    <div id="version-tag">v3.5</div>
+    <div class="game-wrapper">
         <h1>Block Blast</h1>
         
-        <div class="audio-box">
+        <div class="audio-controls">
             <input type="file" id="music-upload" accept="audio/*">
-            <button class="btn-play" onclick="playAudio()">Mulai Musik 🎵</button>
-            <p id="status" style="font-size: 12px; margin-top: 10px;">Pilih lagu & klik mulai</p>
+            <button onclick="playMusic()">Play 🎵</button>
+            <div id="status">Musik standby</div>
         </div>
 
         <div id="grid"></div>
+        <div id="pieces">
+            <div class="piece" draggable="true" ondragstart="drag(event)">Balok A</div>
+            <div class="piece" draggable="true" ondragstart="drag(event)">Balok B</div>
+        </div>
+        <button onclick="location.reload()" style="margin-top:20px;">Reset Game</button>
     </div>
 
     <script>
+        // 1. Audio Logic
         const audio = new Audio();
-        const upload = document.getElementById('music-upload');
-        const status = document.getElementById('status');
-
-        // Fix Musik: Handle file upload
-        upload.onchange = (e) => {
-            const file = e.target.files[0];
-            if(file.size > 2 * 1024 * 1024 * 1024) {
-                alert("File terlalu besar!");
-                return;
-            }
-            audio.src = URL.createObjectURL(file);
-            status.innerText = "Siap: " + file.name;
+        document.getElementById('music-upload').onchange = (e) => {
+            audio.src = URL.createObjectURL(e.target.files[0]);
+            document.getElementById('status').innerText = "File: " + e.target.files[0].name;
         };
-
-        // Fix Musik: Trigger audio lewat interaksi user
-        function playAudio() {
-            if (!audio.src) { alert("Pilih lagu dulu!"); return; }
-            audio.play().then(() => {
-                status.innerText = "Sedang Memutar: " + upload.files[0].name;
-            }).catch(err => {
-                status.innerText = "Gagal memutar, tap layar sekali lagi.";
-            });
+        function playMusic() {
+            audio.play().catch(() => alert("Klik layar sekali setelah pilih lagu!"));
         }
 
-        // Fix Grid: Render sederhana untuk memastikan tidak bug
+        // 2. Grid Logic
         const grid = document.getElementById('grid');
         for(let i=0; i<100; i++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
-            cell.onclick = () => cell.classList.toggle('filled');
+            // Drop logic
+            cell.ondragover = (e) => e.preventDefault();
+            cell.ondrop = (e) => {
+                cell.classList.add('filled');
+            };
             grid.appendChild(cell);
         }
+
+        function drag(e) { e.dataTransfer.setData("text", e.target.id); }
     </script>
 </body>
 </html>
