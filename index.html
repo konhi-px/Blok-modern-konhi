@@ -194,7 +194,6 @@
                 activeClone.classList.add('drag-clone');
                 document.body.appendChild(activeClone);
                 
-                // Offset -60px ke atas jari agar balok kelihatan jelas saat digeser
                 moveClone(e.touches[0].clientX, e.touches[0].clientY);
             });
 
@@ -207,7 +206,6 @@
                 if (!activeClone) return;
                 
                 const touch = e.changedTouches[0];
-                // Peningkatan Akurasi: Cek target berdasarkan pusat dari klon blok yang diangkat
                 const targetCell = document.elementFromPoint(touch.clientX, touch.clientY - 60);
                 
                 if (targetCell && targetCell.classList.contains('cell')) {
@@ -237,7 +235,7 @@
             let cellsToFill = [];
 
             for (let r = 0; r < shape.length; r++) {
-                for (let c = 0; c < shape[r].length; r++) {
+                for (let c = 0; c < shape[r].length; c++) { // FIX: Diubah r++ menjadi c++ agar perulangan kolom normal
                     if (shape[r][c] === 1) {
                         const targetRow = startRow + r;
                         const targetCol = startCol + c;
@@ -290,7 +288,6 @@
                 for (let r = 0; r < GRID_SIZE; r++) {
                     if (!cells[r * GRID_SIZE + c].classList.contains('filled')) { colFilled = false; break; }
                 }
-                if (colFilled) colFilled = false;
                 if (colFilled) colsToClear.push(c);
             }
 
