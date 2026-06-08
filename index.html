@@ -2,82 +2,56 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Blast Ultimate</title>
+    <title>Drive Social Feed</title>
     <style>
-        :root { --bg-color: #0f172a; --grid-bg: #1e293b; --cell-bg: #334155; --cell-filled: #38bdf8; --accent-color: #f43f5e; }
-        body { margin: 0; background: var(--bg-color); color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow: hidden; touch-action: none; }
-        #version-tag { position: absolute; top: 10px; right: 10px; font-size: 10px; color: rgba(255,255,255,0.3); }
-        
-        /* Layout */
-        .container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 360px; padding-top: 10px; }
-        
-        /* Audio Section */
-        #audio-panel { background: #1e293b; padding: 10px; border-radius: 12px; margin-bottom: 10px; text-align: center; border: 1px solid #475569; width: 90%; }
-        
-        /* Game Board */
-        #grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; background: #1e293b; padding: 12px; border-radius: 16px; width: 320px; aspect-ratio: 1/1; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .cell { background: #334155; border-radius: 4px; }
-        .cell.filled { background: var(--cell-filled); box-shadow: inset 0 0 10px rgba(255,255,255,0.2); }
-        
-        /* Pieces UI */
-        #pieces { display: flex; gap: 10px; margin-top: 20px; height: 100px; }
-        .piece { background: #1e293b; padding: 10px; border-radius: 8px; cursor: grab; }
-        
-        /* Game Over */
-        #game-over { display: none; position: fixed; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: auto; }
+        .post-card { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        img { max-width: 100%; border-radius: 8px; }
+        #auth-btn { background: #4285f4; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="version-tag">v4.0-MASTER</div>
-    <div class="container">
-        <h1>Block Blast</h1>
 
-        <div id="audio-panel">
-            <input type="file" id="music-upload" accept="audio/*">
-            <button onclick="audio.play()" style="padding: 5px 15px; border-radius: 10px; cursor: pointer;">Play 🎵</button>
-            <p id="status" style="font-size: 10px; margin-top: 5px; color: #94a3b8;">Pilih lagu & Play</p>
-        </div>
+<div class="container">
+    <h1>Drive Social Feed</h1>
+    <button id="auth-btn" onclick="handleAuthClick()">Login dengan Google</button>
+    <div id="feed"></div>
+</div>
 
-        <div id="grid"></div>
-        <div id="pieces">
-            <div class="piece" draggable="true" ondragstart="drag(event)">Balok A</div>
-            <div class="piece" draggable="true" ondragstart="drag(event)">Balok B</div>
-        </div>
-    </div>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+    // MASUKKAN CLIENT ID DARI GOOGLE CLOUD CONSOLE KAMU DI SINI
+    const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+    let tokenClient;
 
-    <div id="game-over">
-        <h2>GAME OVER</h2>
-        <button onclick="location.reload()">Main Lagi</button>
-    </div>
+    function initClient() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/drive.readonly',
+            callback: (resp) => {
+                if (resp.access_token) fetchDriveFiles(resp.access_token);
+            }
+        });
+    }
 
-    <script>
-        // 1. Audio Logic
-        const audio = new Audio();
-        document.getElementById('music-upload').onchange = (e) => {
-            audio.src = URL.createObjectURL(e.target.files[0]);
-            document.getElementById('status').innerText = "Loaded: " + e.target.files[0].name;
-        };
+    function handleAuthClick() { tokenClient.requestAccessToken(); }
 
-        // 2. Grid & Gameplay Logic
-        const grid = document.getElementById('grid');
-        for(let i=0; i<100; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.ondragover = (e) => e.preventDefault();
-            cell.ondrop = (e) => {
-                cell.classList.add('filled');
-                checkCombo();
-            };
-            grid.appendChild(cell);
-        }
-
-        function checkCombo() {
-            // Logika Mega Combo & Skor kamu kembali ke sini
-            console.log("Combo detected!");
-        }
-
-        function drag(e) { e.dataTransfer.setData("text", e.target.id); }
-    </script>
+    async function fetchDriveFiles(token) {
+        const res = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType contains "image/"', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        const feed = document.getElementById('feed');
+        data.files.forEach(file => {
+            feed.innerHTML += `
+                <div class="post-card">
+                    <p>${file.name}</p>
+                    <img src="https://www.googleapis.com/drive/v3/files/${file.id}?alt=media" alt="${file.name}">
+                </div>`;
+        });
+    }
+</script>
 </body>
 </html>
