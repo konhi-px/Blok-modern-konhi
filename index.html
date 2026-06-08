@@ -46,7 +46,7 @@
 
         #score-box, #status-box { font-weight: bold; }
         #score-val { color: #38bdf8; }
-        #status-val { color: #fbbf24; }
+        #status-val { color: #f43f5e; }
 
         #grid {
             display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
@@ -67,7 +67,7 @@
         }
 
         #pieces {
-            display: flex; gap: 15px; margin-bottom: 20px; min-height: 100px;
+            display: flex; gap: 15px; margin-bottom: 20px; min-height: 120px;
             align-items: center; justify-content: center; width: 100%;
         }
 
@@ -76,13 +76,12 @@
             display: grid; gap: 2px; position: relative; touch-action: none;
         }
 
-        /* Ukuran standar & diperbesar */
-        .piece-cell { width: 20px; height: 20px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 3px; }
-        .piece-empty { width: 20px; height: 20px; background: transparent; }
+        .piece-cell { width: 22px; height: 22px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 3px; }
+        .piece-empty { width: 22px; height: 22px; background: transparent; }
         .piece-row { display: flex; gap: 2px; }
 
-        .piece-container.enlarged .piece-cell { width: 30px; height: 30px; }
-        .piece-container.enlarged .piece-empty { width: 30px; height: 30px; }
+        .piece-container.enlarged .piece-cell { width: 32px; height: 32px; }
+        .piece-container.enlarged .piece-empty { width: 32px; height: 32px; }
 
         button {
             background: linear-gradient(135deg, #f43f5e, #e11d48);
@@ -97,9 +96,8 @@
         }
         #game-over-screen h2 { color: var(--accent-color); font-size: 32px; margin-bottom: 10px; }
 
-        /* Elemen bayangan pas digeser di HP */
         .drag-clone {
-            position: fixed; pointer-events: none; opacity: 0.8; z-index: 999;
+            position: fixed; pointer-events: none; opacity: 0.85; z-index: 999;
             transform: translate(-50%, -50%); display: grid; gap: 2px;
         }
     </style>
@@ -109,8 +107,8 @@
     <h1>Block Blast: Modern</h1>
     
     <div id="status-container">
-        <div id="score-box">Poin: <span id="score-val">3</span></div>
-        <div id="status-box">Mode: <span id="status-val">Normal</span></div>
+        <div id="score-box">Poin: <span id="score-val">11</span></div>
+        <div id="status-box">Mode: <span id="status-val">SULIT (Blok Besar)</span></div>
     </div>
 
     <div id="grid">
@@ -126,8 +124,8 @@
 
     <script>
         const GRID_SIZE = 10;
-        let score = 3; 
-        let isEnlargedMode = false;
+        let score = 11; 
+        let isEnlargedMode = true;
 
         const SHAPES = [
             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
@@ -145,11 +143,11 @@
         let activePieceId = null;
 
         function initGame() {
-            score = 3; isEnlargedMode = false;
+            score = 11; isEnlargedMode = true;
             scoreElement.innerText = score;
-            scoreElement.style.color = '#38bdf8';
-            statusElement.innerText = "Normal";
-            statusElement.style.color = "#fbbf24";
+            scoreElement.style.color = '#f43f5e';
+            statusElement.innerText = "SULIT (Blok Besar)";
+            statusElement.style.color = "#f43f5e";
             gameOverScreen.style.display = 'none';
             
             const cells = gridElement.querySelectorAll('.cell');
@@ -188,16 +186,15 @@
                 container.appendChild(rowEl);
             });
 
-            // LOGIKA TOUCH NATIVE HP (Anti-Mogok)
             container.addEventListener('touchstart', (e) => {
                 activeShapeData = shape;
                 activePieceId = id;
                 
-                // Buat klon balok tepat di bawah jari
                 activeClone = container.cloneNode(true);
                 activeClone.classList.add('drag-clone');
                 document.body.appendChild(activeClone);
                 
+                // Offset -60px ke atas jari agar balok kelihatan jelas saat digeser
                 moveClone(e.touches[0].clientX, e.touches[0].clientY);
             });
 
@@ -210,7 +207,8 @@
                 if (!activeClone) return;
                 
                 const touch = e.changedTouches[0];
-                const targetCell = document.elementFromPoint(touch.clientX, touch.clientY);
+                // Peningkatan Akurasi: Cek target berdasarkan pusat dari klon blok yang diangkat
+                const targetCell = document.elementFromPoint(touch.clientX, touch.clientY - 60);
                 
                 if (targetCell && targetCell.classList.contains('cell')) {
                     const cells = Array.from(gridElement.querySelectorAll('.cell'));
@@ -226,9 +224,8 @@
         }
 
         function moveClone(x, y) {
-            // Posisi balok diangkat sedikit ke atas jari biar gak ketutupan tangan saat main
             activeClone.style.left = x + 'px';
-            activeClone.style.top = (y - 40) + 'px';
+            activeClone.style.top = (y - 60) + 'px';
         }
 
         function attemptPlacePiece(shape, targetIndex, id) {
@@ -240,13 +237,13 @@
             let cellsToFill = [];
 
             for (let r = 0; r < shape.length; r++) {
-                for (let c = 0; c < shape[r].length; c++) {
+                for (let c = 0; c < shape[r].length; r++) {
                     if (shape[r][c] === 1) {
                         const targetRow = startRow + r;
                         const targetCol = startCol + c;
                         const finalIndex = targetRow * GRID_SIZE + targetCol;
 
-                        if (targetRow >= GRID_SIZE || targetCol >= GRID_SIZE || cells[finalIndex].classList.contains('filled')) {
+                        if (targetRow >= GRID_SIZE || targetCol >= GRID_SIZE || finalIndex >= cells.length || cells[finalIndex].classList.contains('filled')) {
                             canPlace = false;
                             break;
                         }
@@ -293,6 +290,7 @@
                 for (let r = 0; r < GRID_SIZE; r++) {
                     if (!cells[r * GRID_SIZE + c].classList.contains('filled')) { colFilled = false; break; }
                 }
+                if (colFilled) colFilled = false;
                 if (colFilled) colsToClear.push(c);
             }
 
