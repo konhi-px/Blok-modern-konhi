@@ -76,7 +76,7 @@
             display: grid; gap: 2px; position: relative; touch-action: none;
         }
 
-        /* Ukuran Dinamis Berdasarkan Level */
+        /* Ukuran Dinamis Sesuai Level */
         .piece-cell { width: 18px; height: 18px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 3px; }
         .piece-empty { width: 18px; height: 18px; background: transparent; }
         .piece-row { display: flex; gap: 2px; }
@@ -135,7 +135,7 @@
         const GRID_SIZE = 10;
         let score = 10; 
         let level = 1;
-        let totalPlaced = 0;
+        let linesClearedTotal = 0; // Menggunakan hitungan baris yang hancur untuk naik level
 
         const SHAPES = [
             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
@@ -156,7 +156,7 @@
         function initGame() {
             score = 10; 
             level = 1;
-            totalPlaced = 0;
+            linesClearedTotal = 0;
             updateStatusUI();
             gameOverScreen.style.display = 'none';
             
@@ -183,6 +183,7 @@
             const container = document.createElement('div');
             container.classList.add('piece-container');
             
+            // Cek level saat ini untuk ukuran balok awal
             if (level >= 16 && level <= 20) {
                 container.classList.add('medium');
             } else if (level >= 21) {
@@ -222,7 +223,6 @@
                 if (!activeClone) return;
                 
                 const touch = e.changedTouches[0];
-                // Menggunakan deteksi offset vertikal stabil agar nyaman di layar HP
                 const targetCell = document.elementFromPoint(touch.clientX, touch.clientY - 50);
                 
                 if (targetCell && targetCell.classList.contains('cell')) {
@@ -273,12 +273,7 @@
                 const origPiece = piecesElement.querySelector(`[data-piece-id="${id}"]`);
                 if (origPiece) origPiece.remove();
 
-                totalPlaced++;
-                score += 1; // Menambah 1 poin tiap sukses menaruh balok
-                
-                // Kalkulasi Level Progresif (Maksimal level 25)
-                let calculatedLevel = Math.floor(totalPlaced / 2) + 1;
-                level = Math.min(calculatedLevel, 25);
+                score += 1; // Taruh balok sukses mendapat +1 Poin
 
                 checkRowsAndColumns();
                 updateStatusUI();
@@ -325,8 +320,13 @@
                     for (let r = 0; r < GRID_SIZE; r++) { cells[r * GRID_SIZE + c].classList.remove('filled'); }
                 });
                 
-                score -= (clearedCount * 2); // Pengurangan poin dinamis
+                score -= (clearedCount * 2); // Bersihkan baris mengurangi poin sesuai aturan main kamu
                 if (score < 0) score = 0;
+
+                // Naik level adil berdasarkan jumlah baris/kolom yang berhasil dihancurkan
+                linesClearedTotal += clearedCount;
+                let calculatedLevel = Math.floor(linesClearedTotal / 2) + 1;
+                level = Math.min(calculatedLevel, 25);
             }
         }
 
