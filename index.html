@@ -39,26 +39,26 @@
         }
 
         #status-container {
-            display: flex; gap: 20px; margin-bottom: 15px; font-size: 16px;
-            background: #1e293b; padding: 6px 20px; border-radius: 30px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 15px;
+            background: #1e293b; padding: 10px 24px; border-radius: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); font-size: 15px;
         }
 
-        #score-box, #status-box { font-weight: bold; }
+        .status-row { display: flex; gap: 25px; font-weight: bold; }
         #score-val { color: #38bdf8; }
-        #status-val { color: #f43f5e; }
+        #level-val { color: #fbbf24; }
+        #difficulty-val { font-weight: 800; }
 
         #grid {
             display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
             background: var(--grid-bg); padding: 12px; border-radius: 16px;
             width: 85vw; max-width: 360px; aspect-ratio: 1 / 1;
-            margin-bottom: 25px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             position: relative;
         }
 
         .cell {
             background: var(--cell-bg); border-radius: 4px; aspect-ratio: 1 / 1;
-            transition: background 0.1s;
         }
 
         .cell.filled {
@@ -67,7 +67,7 @@
         }
 
         #pieces {
-            display: flex; gap: 15px; margin-bottom: 20px; min-height: 120px;
+            display: flex; gap: 15px; margin-bottom: 20px; min-height: 140px;
             align-items: center; justify-content: center; width: 100%;
         }
 
@@ -76,17 +76,22 @@
             display: grid; gap: 2px; position: relative; touch-action: none;
         }
 
-        .piece-cell { width: 22px; height: 22px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 3px; }
-        .piece-empty { width: 22px; height: 22px; background: transparent; }
+        /* Ukuran Dinamis Berdasarkan Level */
+        .piece-cell { width: 18px; height: 18px; background: linear-gradient(135deg, #a855f7, #6366f1); border-radius: 3px; }
+        .piece-empty { width: 18px; height: 18px; background: transparent; }
         .piece-row { display: flex; gap: 2px; }
 
-        .piece-container.enlarged .piece-cell { width: 32px; height: 32px; }
-        .piece-container.enlarged .piece-empty { width: 32px; height: 32px; }
+        .piece-container.medium .piece-cell { width: 25px; height: 25px; }
+        .piece-container.medium .piece-empty { width: 25px; height: 25px; }
+
+        .piece-container.hard .piece-cell { width: 32px; height: 32px; }
+        .piece-container.hard .piece-empty { width: 32px; height: 32px; }
 
         button {
             background: linear-gradient(135deg, #f43f5e, #e11d48);
             color: white; border: none; padding: 10px 24px;
             border-radius: 9999px; font-size: 14px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
 
         #game-over-screen {
@@ -97,8 +102,9 @@
         #game-over-screen h2 { color: var(--accent-color); font-size: 32px; margin-bottom: 10px; }
 
         .drag-clone {
-            position: fixed; pointer-events: none; opacity: 0.85; z-index: 999;
+            position: fixed; pointer-events: none; opacity: 0.9; z-index: 999;
             transform: translate(-50%, -50%); display: grid; gap: 2px;
+            background: transparent; padding: 0;
         }
     </style>
 </head>
@@ -107,8 +113,11 @@
     <h1>Block Blast: Modern</h1>
     
     <div id="status-container">
-        <div id="score-box">Poin: <span id="score-val">11</span></div>
-        <div id="status-box">Mode: <span id="status-val">SULIT (Blok Besar)</span></div>
+        <div class="status-row">
+            <div id="score-box">Poin: <span id="score-val">10</span></div>
+            <div id="level-box">Level: <span id="level-val">1</span></div>
+        </div>
+        <div>Mode: <span id="difficulty-val">NORMAL</span></div>
     </div>
 
     <div id="grid">
@@ -124,8 +133,9 @@
 
     <script>
         const GRID_SIZE = 10;
-        let score = 11; 
-        let isEnlargedMode = true;
+        let score = 10; 
+        let level = 1;
+        let totalPlaced = 0;
 
         const SHAPES = [
             [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]],
@@ -135,7 +145,8 @@
         const gridElement = document.getElementById('grid');
         const piecesElement = document.getElementById('pieces');
         const scoreElement = document.getElementById('score-val');
-        const statusElement = document.getElementById('status-val');
+        const levelElement = document.getElementById('level-val');
+        const difficultyElement = document.getElementById('difficulty-val');
         const gameOverScreen = document.getElementById('game-over-screen');
 
         let activeClone = null;
@@ -143,11 +154,10 @@
         let activePieceId = null;
 
         function initGame() {
-            score = 11; isEnlargedMode = true;
-            scoreElement.innerText = score;
-            scoreElement.style.color = '#f43f5e';
-            statusElement.innerText = "SULIT (Blok Besar)";
-            statusElement.style.color = "#f43f5e";
+            score = 10; 
+            level = 1;
+            totalPlaced = 0;
+            updateStatusUI();
             gameOverScreen.style.display = 'none';
             
             const cells = gridElement.querySelectorAll('.cell');
@@ -172,7 +182,13 @@
         function createPieceElement(shape, id) {
             const container = document.createElement('div');
             container.classList.add('piece-container');
-            if (isEnlargedMode) container.classList.add('enlarged');
+            
+            if (level >= 16 && level <= 20) {
+                container.classList.add('medium');
+            } else if (level >= 21) {
+                container.classList.add('hard');
+            }
+            
             container.dataset.pieceId = id;
             
             shape.forEach(row => {
@@ -195,18 +211,19 @@
                 document.body.appendChild(activeClone);
                 
                 moveClone(e.touches[0].clientX, e.touches[0].clientY);
-            });
+            }, { passive: true });
 
             container.addEventListener('touchmove', (e) => {
                 if (!activeClone) return;
                 moveClone(e.touches[0].clientX, e.touches[0].clientY);
-            });
+            }, { passive: true });
 
             container.addEventListener('touchend', (e) => {
                 if (!activeClone) return;
                 
                 const touch = e.changedTouches[0];
-                const targetCell = document.elementFromPoint(touch.clientX, touch.clientY - 60);
+                // Menggunakan deteksi offset vertikal stabil agar nyaman di layar HP
+                const targetCell = document.elementFromPoint(touch.clientX, touch.clientY - 50);
                 
                 if (targetCell && targetCell.classList.contains('cell')) {
                     const cells = Array.from(gridElement.querySelectorAll('.cell'));
@@ -223,7 +240,7 @@
 
         function moveClone(x, y) {
             activeClone.style.left = x + 'px';
-            activeClone.style.top = (y - 60) + 'px';
+            activeClone.style.top = (y - 50) + 'px';
         }
 
         function attemptPlacePiece(shape, targetIndex, id) {
@@ -235,7 +252,7 @@
             let cellsToFill = [];
 
             for (let r = 0; r < shape.length; r++) {
-                for (let c = 0; c < shape[r].length; c++) { // FIX: Diubah r++ menjadi c++ agar perulangan kolom normal
+                for (let c = 0; c < shape[r].length; c++) {
                     if (shape[r][c] === 1) {
                         const targetRow = startRow + r;
                         const targetCol = startCol + c;
@@ -256,8 +273,15 @@
                 const origPiece = piecesElement.querySelector(`[data-piece-id="${id}"]`);
                 if (origPiece) origPiece.remove();
 
-                updateScore(1);
+                totalPlaced++;
+                score += 1; // Menambah 1 poin tiap sukses menaruh balok
+                
+                // Kalkulasi Level Progresif (Maksimal level 25)
+                let calculatedLevel = Math.floor(totalPlaced / 2) + 1;
+                level = Math.min(calculatedLevel, 25);
+
                 checkRowsAndColumns();
+                updateStatusUI();
 
                 if (score <= 0) {
                     triggerGameOver();
@@ -300,30 +324,25 @@
                 colsToClear.forEach(c => {
                     for (let r = 0; r < GRID_SIZE; r++) { cells[r * GRID_SIZE + c].classList.remove('filled'); }
                 });
-                updateScore(-(clearedCount * 2));
+                
+                score -= (clearedCount * 2); // Pengurangan poin dinamis
+                if (score < 0) score = 0;
             }
         }
 
-        function updateScore(amount) {
-            score += amount;
+        function updateStatusUI() {
             scoreElement.innerText = score;
+            levelElement.innerText = level;
 
-            if (score >= 5) {
-                if (!isEnlargedMode) {
-                    isEnlargedMode = true;
-                    statusElement.innerText = "SULIT (Blok Besar)";
-                    statusElement.style.color = "#f43f5e";
-                    scoreElement.style.color = "#f43f5e";
-                    document.querySelectorAll('.piece-container').forEach(el => el.classList.add('enlarged'));
-                }
-            } else {
-                if (isEnlargedMode) {
-                    isEnlargedMode = false;
-                    statusElement.innerText = "Normal";
-                    statusElement.style.color = "#fbbf24";
-                    scoreElement.style.color = "#38bdf8";
-                    document.querySelectorAll('.piece-container').forEach(el => el.classList.remove('enlarged'));
-                }
+            if (level >= 1 && level <= 15) {
+                difficultyElement.innerText = "NORMAL";
+                difficultyElement.style.color = "#38bdf8";
+            } else if (level >= 16 && level <= 20) {
+                difficultyElement.innerText = "MENENGAH";
+                difficultyElement.style.color = "#fbbf24";
+            } else if (level >= 21) {
+                difficultyElement.innerText = "SULIT";
+                difficultyElement.style.color = "#f43f5e";
             }
         }
 
